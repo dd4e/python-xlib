@@ -1077,6 +1077,71 @@ def get_output_primary(self):
         window=self,
         )
 
+# version 1.5
+
+# typedef struct _XRRMonitorInfo {
+#     Atom name;
+#     Bool primary;
+#     Bool automatic;
+#     int noutput;
+#     int x;
+#     int y;
+#     int width;
+#     int height;
+#     int mwidth;
+#     int mheight;
+#     RROutput *outputs;
+# } XRRMonitorInfo;
+
+# https://cgit.freedesktop.org/xorg/proto/randrproto/tree/randrproto.txt
+
+MonitorInfo = rq.Struct(
+    rq.String8('name'),
+    rq.Bool('primary'),
+    rq.Bool('automatic'),
+    rq.Int16('x'),
+    rq.Int16('y'),
+    rq.Card16('width'),
+    rq.Card16('height'),
+    rq.Card32('width-in-millimeters'),
+    rq.Card32('height-in-millimeters'),
+    rq.List('outputs', rq.Card32Obj),
+)
+
+
+class GetMonitors(rq.ReplyRequest):
+    _request = rq.Struct(
+        rq.Card8('opcode'),
+        rq.Opcode(42),
+        rq.RequestLength(),
+        rq.Window('window')
+    )
+
+    _reply = rq.Struct(
+        rq.ReplyCode(),
+        rq.Pad(1),
+        rq.Card16('sequence_number'),
+        rq.ReplyLength(),
+        rq.Card32('timestamp'),
+        rq.Card32('nmonitors'),
+        rq.Card32('noutputs'),
+        rq.Pad(12),
+        rq.List('monitors', MonitorInfo)
+    )
+
+
+def get_monitors(self):
+    return GetMonitors(
+        display=self.display,
+        opcode=self.display.get_extension_major(extname),
+        windows=self,
+    )
+
+# void
+# XRRSetMonitor(Display *dpy, Window window, XRRMonitorInfo *monitor);
+
+# void
+# XRRDeleteMonitor(Display *dpy, Window window, Atom name);
 
 # Events #
 
@@ -1185,6 +1250,7 @@ def init(disp, info):
     disp.extension_add_method('window', 'xrandr_get_output_primary', get_output_primary)
     disp.extension_add_method('display', 'xrandr_get_panning', get_panning)
     disp.extension_add_method('display', 'xrandr_set_panning', set_panning)
+    disp.extension_add_method('window', 'xrandr_get_monitors', get_monitors)
 
     disp.extension_add_event(info.first_event + RRScreenChangeNotify, ScreenChangeNotify)
      # add RRNotify events (1 event code with 3 subcodes)
